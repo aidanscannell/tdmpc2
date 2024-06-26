@@ -15,7 +15,7 @@ mem_gb: 100
 # mem_gb: 50
 nodes: 1
 # name: ${hydra.job.name}
-name: ${env_name}-${task_name}-${agent.name}
+name: ${task}
 qos: null
 comment: null
 exclude: null

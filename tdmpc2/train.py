@@ -1,7 +1,9 @@
 import os
 
-os.environ["MUJOCO_GL"] = "egl"
-os.environ["LAZY_LEGACY_OP"] = "0"
+# os.environ["MUJOCO_GL"] = "egl"
+# os.environ["LAZY_LEGACY_OP"] = "0"
+os.environ["MUJOCO_GL"] = "osmesa"
+os.environ["PYOPENGL_PLATFORM"] = "osmesa"
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -42,14 +44,7 @@ def train(cfg: dict):
             $ python train.py task=dog-run steps=7000000
     ```
     """
-    # assert torch.cuda.is_available()
-    #
-    # This is needed to render videos on GPU
-    # if torch.cuda.is_available() and (cfg.device == "cuda"):
-    if torch.cuda.is_available():
-        os.environ["MUJOCO_GL"] = "osmesa"
-        os.environ["PYOPENGL_PLATFORM"] = "osmesa"
-
+    assert torch.cuda.is_available()
     assert cfg.steps > 0, "Must train for at least 1 step."
     cfg = parse_cfg(cfg)
     set_seed(cfg.seed)

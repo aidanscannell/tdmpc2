@@ -10,6 +10,11 @@ warnings.filterwarnings("ignore")
 
 import hydra
 
+from common.buffer import Buffer
+from common.logger import Logger
+from common.parser import parse_cfg
+from common.seed import set_seed
+
 
 @hydra.main(config_name="config", config_path="./cfgs")
 def train(cfg: dict):
@@ -34,10 +39,6 @@ def train(cfg: dict):
     import torch
     from termcolor import colored
 
-    from common.buffer import Buffer
-    from common.logger import Logger
-    from common.parser import parse_cfg
-    from common.seed import set_seed
     from envs import make_env
     from tdmpc2 import TDMPC2
     from trainer.offline_trainer import OfflineTrainer

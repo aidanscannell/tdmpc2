@@ -5,6 +5,9 @@ defaults:
 task: dog-run
 obs: state
 
+# custom
+use_cosine_consistency_loss: false
+
 # evaluation
 checkpoint: ???
 eval_episodes: 10

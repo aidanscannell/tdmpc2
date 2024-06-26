@@ -307,7 +307,14 @@ class TDMPC2:
         consistency_loss = 0
         for t in range(self.cfg.horizon):
             z = self.model.next(z, action[t], task)
-            consistency_loss += F.mse_loss(z, next_z[t]) * self.cfg.rho**t
+            if self.cfg.use_cosine_consistency_loss:
+                consistency_loss += (
+                    torch.nn.CosineSimilarity(dim=-1, eps=1e-6)(z, next_z[t])
+                    * self.cfg.rho**t
+                )
+            else:
+                consistency_loss += F.mse_loss(z, next_z[t]) * self.cfg.rho**t
+            breakpoint()
             zs[t + 1] = z
 
         # Predictions

@@ -312,9 +312,9 @@ class TDMPC2:
                     torch.nn.CosineSimilarity(dim=-1, eps=1e-6)(z, next_z[t])
                     * self.cfg.rho**t
                 )
+                breakpoint()
             else:
                 consistency_loss += F.mse_loss(z, next_z[t]) * self.cfg.rho**t
-            breakpoint()
             zs[t + 1] = z
 
         # Predictions

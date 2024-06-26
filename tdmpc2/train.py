@@ -1,9 +1,9 @@
 import os
 
-# os.environ["MUJOCO_GL"] = "egl"
+os.environ["MUJOCO_GL"] = "egl"
 os.environ["LAZY_LEGACY_OP"] = "0"
-os.environ["MUJOCO_GL"] = "osmesa"
-os.environ["PYOPENGL_PLATFORM"] = "osmesa"
+# os.environ["MUJOCO_GL"] = "osmesa"
+# os.environ["PYOPENGL_PLATFORM"] = "osmesa"
 import warnings
 
 warnings.filterwarnings("ignore")

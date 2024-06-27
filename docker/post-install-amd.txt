@@ -2,3 +2,27 @@ pip uninstall torch torchvision
 pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm5.6
 conda install ffmpeg -c conda-forge
 conda env config vars set MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
+
+
+pip install mani-skill==3.0.0b5
+pip instal gymnasium-robotics==1.2.4
+pip install myosuite==2.4.0
+pip install gymnasium==1.0.0a2
+pip install mujoco==2.3.7
+# Gymnasium:
+# (requires mujoco>=2.1.5)
+# - gymnasium==1.0.0a2
+####################
+# ManiSkill:
+# (requires gymnasium==0.29.1)
+# - mani-skill==3.0.0b5
+####################
+# Meta-World:
+# (requires gymnasium==1.0.0a1 mujoco<3.0.0)
+- git+https://github.com/Farama-Foundation/Metaworld.git@master#egg=metaworld==2.0.0
+# - gymnasium-robotics==1.2.4
+####################
+# MyoSuite:
+# (requires gymnasium==0.29.1 mujoco==3.1.2 dm_control==1.0.16)
+# - myosuite==2.4.0
+####################

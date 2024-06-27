@@ -5,7 +5,7 @@ conda env config vars set MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
 
 
 pip install mani-skill==3.0.0b5
-pip instal gymnasium-robotics==1.2.4
+pip install gymnasium-robotics==1.2.4
 pip install myosuite==2.4.0
 pip install gymnasium==1.0.0a2
 pip install mujoco==2.3.7

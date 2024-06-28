@@ -1,5 +1,5 @@
 import numpy as np
-import gym
+import gymnasium as gym
 from envs.wrappers.time_limit import TimeLimit
 
 from metaworld.envs import ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE
@@ -15,17 +15,25 @@ class MetaWorldWrapper(gym.Wrapper):
         self.env._freeze_rand_vec = False
 
     def reset(self, **kwargs):
-        obs = super().reset(**kwargs).astype(np.float32)
+        obs, info = super().reset(**kwargs)
+        obs = obs.astype(np.float32)
         self.env.step(np.zeros(self.env.action_space.shape))
-        return obs
+        return obs, info
 
     def step(self, action):
         reward = 0
+        success = False
         for _ in range(2):
-            obs, r, _, info = self.env.step(action.copy())
+            # obs, r, _, info = self.env.step(action.copy())
+            obs, r, terminated, truncated, info = self.env.step(action.copy())
             reward += r
+            success = success or info["success"]
+            if terminated or truncated:
+                break
         obs = obs.astype(np.float32)
-        return obs, reward, False, info
+        # return obs, reward, False, info
+        info.update({"success": success})
+        return obs, reward, terminated, truncated, info
 
     @property
     def unwrapped(self):

@@ -1,15 +1,17 @@
-from collections import deque, defaultdict
+from collections import defaultdict, deque
 from typing import Any, NamedTuple
+
 import dm_env
 import numpy as np
-from envs.tasks import cheetah, walker, hopper, reacher, ball_in_cup, pendulum, fish
 from dm_control import suite
+
+from envs.tasks import ball_in_cup, cheetah, fish, hopper, pendulum, reacher, walker
 
 suite.ALL_TASKS = suite.ALL_TASKS + suite._get_tasks("custom")
 suite.TASKS_BY_DOMAIN = suite._get_tasks_by_domain(suite.ALL_TASKS)
+import gymnasium as gym
 from dm_control.suite.wrappers import action_scale
 from dm_env import StepType, specs
-import gym
 
 
 class ExtendedTimeStep(NamedTuple):
@@ -122,7 +124,7 @@ class ExtendedTimeStepWrapper(dm_env.Environment):
         return getattr(self._env, name)
 
 
-class TimeStepToGymWrapper:
+class TimeStepToGymnasiumWrapper:
     def __init__(self, env, domain, task):
         obs_shp = []
         for v in env.observation_spec().values():
@@ -171,10 +173,20 @@ class TimeStepToGymWrapper:
     def step(self, action):
         self.t += 1
         time_step = self.env.step(action)
+
+        truncated = False
+        terminated = False
+        if time_step.last():
+            # TODO check this works
+            terminated = True
+        if self.t == self.max_episode_steps:
+            # TODO check this works
+            truncated = True
         return (
             self._obs_to_array(time_step.observation),
             time_step.reward,
-            time_step.last() or self.t == self.max_episode_steps,
+            terminated,
+            truncated,
             defaultdict(float),
         )
 
@@ -203,5 +215,5 @@ def make_env(cfg):
     env = ActionRepeatWrapper(env, 2)
     env = action_scale.Wrapper(env, minimum=-1.0, maximum=1.0)
     env = ExtendedTimeStepWrapper(env)
-    env = TimeStepToGymWrapper(env, domain, task)
+    env = TimeStepToGymnasiumWrapper(env, domain, task)
     return env

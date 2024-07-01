@@ -11,9 +11,9 @@ update_q_separate: false
 use_new_enc_for_pi: false
 use_value_loss_for_repr: true
 use_class_loss_for_Q: true
+use_simnorm: true
 
 # fsq
-use_simnorm: true
 use_fsq: false
 fsq_levels: [8, 8]
 fsq_return_type: "code" # "code" or "index"

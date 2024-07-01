@@ -100,8 +100,7 @@ class FSQ(nn.Module):
         self.levels = cfg.fsq_levels
         self.return_type = cfg.fsq_return_type  # "code" or "index"
         self.num_channels = len(cfg.fsq_levels)
-
-        self._fsq = _FSQ(cfg._levels).to(cfg.device)
+        self._fsq = _FSQ(self.levels).to(cfg.device)
 
     def forward(self, x):
         shp = x.shape

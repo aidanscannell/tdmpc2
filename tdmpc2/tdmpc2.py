@@ -373,6 +373,7 @@ class TDMPC2:
         self.optim.step()
 
         if self.cfg.use_new_enc_for_pi:
+            value_loss = 0
             # Use new encoder for pi/Q updates
             z = self.model.encode(obs[0], task)
             zs[0] = z

@@ -99,7 +99,6 @@ class FSQ(nn.Module):
         super().__init__()
         self.levels = cfg.fsq_levels
         self.return_type = cfg.fsq_return_type  # "code" or "index"
-        self.idx = cfg.fsq_idx
         self.num_channels = len(cfg.fsq_levels)
 
         self._fsq = _FSQ(cfg._levels).to(cfg.device)

@@ -375,6 +375,12 @@ class TDMPC2:
         if self.cfg.use_new_enc_for_pi:
             value_loss = 0
             # Use new encoder for pi/Q updates
+            zs = torch.empty(
+                self.cfg.horizon + 1,
+                self.cfg.batch_size,
+                self.cfg.latent_dim,
+                device=self.device,
+            )
             z = self.model.encode(obs[0], task)
             zs[0] = z
             for t in range(self.cfg.horizon):

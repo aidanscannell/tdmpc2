@@ -18,23 +18,44 @@ class TDMPC2:
         self.cfg = cfg
         self.device = torch.device("cuda")
         self.model = WorldModel(cfg).to(self.device)
-        self.optim = torch.optim.Adam(
-            [
-                {
-                    "params": self.model._encoder.parameters(),
-                    "lr": self.cfg.lr * self.cfg.enc_lr_scale,
-                },
-                {"params": self.model._dynamics.parameters()},
-                {"params": self.model._reward.parameters()},
-                {"params": self.model._Qs.parameters()},
-                {
-                    "params": self.model._task_emb.parameters()
-                    if self.cfg.multitask
-                    else []
-                },
-            ],
-            lr=self.cfg.lr,
-        )
+        if cfg.update_q_separate:
+            self.optim = torch.optim.Adam(
+                [
+                    {
+                        "params": self.model._encoder.parameters(),
+                        "lr": self.cfg.lr * self.cfg.enc_lr_scale,
+                    },
+                    {"params": self.model._dynamics.parameters()},
+                    {"params": self.model._reward.parameters()},
+                    {
+                        "params": self.model._task_emb.parameters()
+                        if self.cfg.multitask
+                        else []
+                    },
+                ],
+                lr=self.cfg.lr,
+            )
+            self.q_optim = torch.optim.Adam(
+                [{"params": self.model._Qs.parameters()}], lr=self.cfg.lr
+            )
+        else:
+            self.optim = torch.optim.Adam(
+                [
+                    {
+                        "params": self.model._encoder.parameters(),
+                        "lr": self.cfg.lr * self.cfg.enc_lr_scale,
+                    },
+                    {"params": self.model._dynamics.parameters()},
+                    {"params": self.model._reward.parameters()},
+                    {"params": self.model._Qs.parameters()},
+                    {
+                        "params": self.model._task_emb.parameters()
+                        if self.cfg.multitask
+                        else []
+                    },
+                ],
+                lr=self.cfg.lr,
+            )
         self.pi_optim = torch.optim.Adam(
             self.model._pi.parameters(), lr=self.cfg.lr, eps=1e-5
         )
@@ -316,8 +337,9 @@ class TDMPC2:
 
         # Predictions
         _zs = zs[:-1]
-        qs = self.model.Q(_zs, action, task, return_type="all")
         reward_preds = self.model.reward(_zs, action, task)
+        if self.cfg.use_value_loss_for_repr:
+            qs = self.model.Q(_zs, action, task, return_type="all")
 
         # Compute losses
         reward_loss, value_loss = 0, 0
@@ -326,19 +348,22 @@ class TDMPC2:
                 math.soft_ce(reward_preds[t], reward[t], self.cfg).mean()
                 * self.cfg.rho**t
             )
-            for q in range(self.cfg.num_q):
-                value_loss += (
-                    math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
-                    * self.cfg.rho**t
-                )
+
+            if self.cfg.use_value_loss_for_repr:
+                for q in range(self.cfg.num_q):
+                    value_loss += (
+                        math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
+                        * self.cfg.rho**t
+                    )
         consistency_loss *= 1 / self.cfg.horizon
         reward_loss *= 1 / self.cfg.horizon
         value_loss *= 1 / (self.cfg.horizon * self.cfg.num_q)
         total_loss = (
             self.cfg.consistency_coef * consistency_loss
             + self.cfg.reward_coef * reward_loss
-            + self.cfg.value_coef * value_loss
         )
+        if self.cfg.use_value_loss_for_repr:
+            total_loss += self.cfg.value_coef * value_loss
 
         # Update model
         total_loss.backward()
@@ -346,6 +371,34 @@ class TDMPC2:
             self.model.parameters(), self.cfg.grad_clip_norm
         )
         self.optim.step()
+
+        if self.cfg.use_new_enc_for_pi:
+            # Use new encoder for pi/Q updates
+            z = self.model.encode(obs[0], task)
+            zs[0] = z
+            for t in range(self.cfg.horizon):
+                z = self.model.next(z, action[t], task)
+                zs[t + 1] = z
+
+            _zs = zs[:-1]
+
+            if self.cfg.update_q_separate:
+                qs = self.model.Q(_zs, action, task, return_type="all")
+
+                for t in range(self.cfg.horizon):
+                    for q in range(self.cfg.num_q):
+                        value_loss += (
+                            math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
+                            * self.cfg.rho**t
+                        )
+
+        if self.cfg.update_q_separate:
+            # Update Q
+            value_loss.backward()
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+                self.model._Qs.parameters(), self.cfg.grad_clip_norm
+            )
+            self.q_optim.step()
 
         # Update policy
         pi_loss = self.update_pi(zs.detach(), task)

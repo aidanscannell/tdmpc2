@@ -107,27 +107,11 @@ class FSQ(nn.Module):
     def forward(self, x):
         shp = x.shape
         x = x.view(*shp[:-1], -1, self.num_channels)
-        # z = z.reshape((*z.shape[0:-1], self.latent_dim, self.num_channels))
-        # if z.ndim > 3:  # TODO this might not work for CNN
-        #     z, indices = torch.func.vmap(self._fsq)(z)
-        # else:
-        #     z, indices = self._fsq(z)
         z, indices = self._fsq(x)
-        breakpoint()
         if self.return_type == "code":
             return z.view(*shp)
         elif self.return_type == "index":
             return indices
-        # if self.fsq_idx == 0:
-        #     state = torch.flatten(z, -2, -1)
-        # else:
-        #     state = indices
-        # return {"state": state, "z": z, "indices": indices}
-
-        # shp = x.shape
-        # x = x.view(*shp[:-1], -1, self.dim)
-        # x = F.softmax(x, dim=-1)
-        # return x.view(*shp)
 
     def __repr__(self):
         return f"FSQ(levels={self.levels}, return_type={self.return_type})"

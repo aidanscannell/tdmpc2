@@ -28,16 +28,18 @@ class OnlineTrainer(Trainer):
         """Evaluate a TD-MPC2 agent."""
         ep_rewards, ep_successes = [], []
         for i in range(self.cfg.eval_episodes):
-            obs, done, ep_reward, t = self.env.reset(), False, 0, 0
+            obs, info = self.env.reset()
+            done, ep_reward, t = False, 0, 0
             if self.cfg.save_video:
                 self.logger.video.init(self.env, enabled=(i == 0))
             while not done:
                 action = self.agent.act(obs, t0=t == 0, eval_mode=True)
-                obs, reward, done, info = self.env.step(action)
+                obs, reward, terminated, truncated, info = self.env.step(action)
                 ep_reward += reward
                 t += 1
                 if self.cfg.save_video:
                     self.logger.video.record(self.env)
+                done = terminated or truncated
             ep_rewards.append(ep_reward)
             ep_successes.append(info["success"])
             if self.cfg.save_video:
@@ -102,8 +104,9 @@ class OnlineTrainer(Trainer):
                 action = self.agent.act(obs, t0=len(self._tds) == 1)
             else:
                 action = self.env.rand_act()
-            obs, reward, done, info = self.env.step(action)
+            obs, reward, terminated, truncated, info = self.env.step(action)
             self._tds.append(self.to_td(obs, action, reward))
+            done = terminated or truncated
 
             # Update agent
             if self._step >= self.cfg.seed_steps:

@@ -357,7 +357,9 @@ class TDMPC2:
                             * self.cfg.rho**t
                         )
                     else:
-                        breakpoint()
+                        value_loss += (
+                            F.mse_loss(qs[q][t], td_targets[t]) * self.cfg.rho**t
+                        )
         consistency_loss *= 1 / self.cfg.horizon
         reward_loss *= 1 / self.cfg.horizon
         value_loss *= 1 / (self.cfg.horizon * self.cfg.num_q)
@@ -403,7 +405,9 @@ class TDMPC2:
                             * self.cfg.rho**t
                         )
                     else:
-                        breakpoint()
+                        value_loss += (
+                            F.mse_loss(qs[q][t], td_targets[t]) * self.cfg.rho**t
+                        )
 
         if self.cfg.update_q_separate:
             # Update Q

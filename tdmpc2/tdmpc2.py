@@ -390,7 +390,7 @@ class TDMPC2:
             # if self.cfg.use_new_enc_for_pi or not self.cfg.use_value_loss_for_repr:
             value_loss = 0
             _zs = zs[:-1]
-            qs = self.model.Q(_zs, action, task, return_type="all")
+            qs = self.model.Q(_zs.detach(), action, task, return_type="all")
 
             for t in range(self.cfg.horizon):
                 for q in range(self.cfg.num_q):

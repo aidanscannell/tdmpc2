@@ -373,7 +373,6 @@ class TDMPC2:
         self.optim.step()
 
         if self.cfg.use_new_enc_for_pi:
-            value_loss = 0
             # Use new encoder for pi/Q updates
             zs = torch.empty(
                 self.cfg.horizon + 1,
@@ -387,9 +386,10 @@ class TDMPC2:
                 z = self.model.next(z, action[t], task)
                 zs[t + 1] = z
 
-            _zs = zs[:-1]
-
-            if self.cfg.update_q_separate:
+        if self.cfg.update_q_separate:
+            if self.cfg.use_new_enc_for_pi or not self.cfg.use_value_loss_for_repr:
+                value_loss = 0
+                _zs = zs[:-1]
                 qs = self.model.Q(_zs, action, task, return_type="all")
 
                 for t in range(self.cfg.horizon):

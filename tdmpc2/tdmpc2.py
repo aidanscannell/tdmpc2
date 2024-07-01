@@ -387,17 +387,17 @@ class TDMPC2:
                 zs[t + 1] = z
 
         if self.cfg.update_q_separate:
-            if self.cfg.use_new_enc_for_pi or not self.cfg.use_value_loss_for_repr:
-                value_loss = 0
-                _zs = zs[:-1]
-                qs = self.model.Q(_zs, action, task, return_type="all")
+            # if self.cfg.use_new_enc_for_pi or not self.cfg.use_value_loss_for_repr:
+            value_loss = 0
+            _zs = zs[:-1]
+            qs = self.model.Q(_zs, action, task, return_type="all")
 
-                for t in range(self.cfg.horizon):
-                    for q in range(self.cfg.num_q):
-                        value_loss += (
-                            math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
-                            * self.cfg.rho**t
-                        )
+            for t in range(self.cfg.horizon):
+                for q in range(self.cfg.num_q):
+                    value_loss += (
+                        math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
+                        * self.cfg.rho**t
+                    )
 
         if self.cfg.update_q_separate:
             # Update Q

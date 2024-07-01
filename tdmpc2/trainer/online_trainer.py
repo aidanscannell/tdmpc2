@@ -96,7 +96,7 @@ class OnlineTrainer(Trainer):
                     self.logger.log(train_metrics, "train")
                     self._ep_idx = self.buffer.add(torch.cat(self._tds))
 
-                obs = self.env.reset()
+                obs, info = self.env.reset()
                 self._tds = [self.to_td(obs)]
 
             # Collect experience

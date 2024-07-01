@@ -204,5 +204,4 @@ class WorldModel(nn.Module):
         Q1, Q2 = out[np.random.choice(self.cfg.num_q, 2, replace=False)]
         if self.cfg.use_class_loss_for_Q:
             Q1, Q2 = math.two_hot_inv(Q1, self.cfg), math.two_hot_inv(Q2, self.cfg)
-        breakpoint()
         return torch.min(Q1, Q2) if return_type == "min" else (Q1 + Q2) / 2

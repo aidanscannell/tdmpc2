@@ -36,17 +36,30 @@ class WorldModel(nn.Module):
         self._pi = layers.mlp(
             cfg.latent_dim + cfg.task_dim, 2 * [cfg.mlp_dim], 2 * cfg.action_dim
         )
-        self._Qs = layers.Ensemble(
-            [
-                layers.mlp(
-                    cfg.latent_dim + cfg.action_dim + cfg.task_dim,
-                    2 * [cfg.mlp_dim],
-                    max(cfg.num_bins, 1),
-                    dropout=cfg.dropout,
-                )
-                for _ in range(cfg.num_q)
-            ]
-        )
+        if cfg.use_class_loss_for_Q:
+            self._Qs = layers.Ensemble(
+                [
+                    layers.mlp(
+                        cfg.latent_dim + cfg.action_dim + cfg.task_dim,
+                        2 * [cfg.mlp_dim],
+                        max(cfg.num_bins, 1),
+                        dropout=cfg.dropout,
+                    )
+                    for _ in range(cfg.num_q)
+                ]
+            )
+        else:
+            self._Qs = layers.Ensemble(
+                [
+                    layers.mlp(
+                        cfg.latent_dim + cfg.action_dim + cfg.task_dim,
+                        2 * [cfg.mlp_dim],
+                        1,
+                        dropout=cfg.dropout,
+                    )
+                    for _ in range(cfg.num_q)
+                ]
+            )
         self.apply(init.weight_init)
         init.zero_([self._reward[-1].weight, self._Qs.params[-2]])
         self._target_Qs = deepcopy(self._Qs).requires_grad_(False)
@@ -189,5 +202,7 @@ class WorldModel(nn.Module):
             return out
 
         Q1, Q2 = out[np.random.choice(self.cfg.num_q, 2, replace=False)]
-        Q1, Q2 = math.two_hot_inv(Q1, self.cfg), math.two_hot_inv(Q2, self.cfg)
+        if self.cfg.use_class_loss_for_Q:
+            breakpoint()
+            Q1, Q2 = math.two_hot_inv(Q1, self.cfg), math.two_hot_inv(Q2, self.cfg)
         return torch.min(Q1, Q2) if return_type == "min" else (Q1 + Q2) / 2

@@ -10,6 +10,7 @@ use_cosine_consistency_loss: false
 update_q_separate: false
 use_new_enc_for_pi: false
 use_value_loss_for_repr: true
+use_class_loss_for_Q: true
 
 # evaluation
 checkpoint: ???

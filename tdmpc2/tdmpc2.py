@@ -351,10 +351,13 @@ class TDMPC2:
 
             if self.cfg.use_value_loss_for_repr:
                 for q in range(self.cfg.num_q):
-                    value_loss += (
-                        math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
-                        * self.cfg.rho**t
-                    )
+                    if self.cfg.use_class_loss_for_Q:
+                        value_loss += (
+                            math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
+                            * self.cfg.rho**t
+                        )
+                    else:
+                        breakpoint()
         consistency_loss *= 1 / self.cfg.horizon
         reward_loss *= 1 / self.cfg.horizon
         value_loss *= 1 / (self.cfg.horizon * self.cfg.num_q)
@@ -394,10 +397,13 @@ class TDMPC2:
 
             for t in range(self.cfg.horizon):
                 for q in range(self.cfg.num_q):
-                    value_loss += (
-                        math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
-                        * self.cfg.rho**t
-                    )
+                    if self.cfg.use_class_loss_for_Q:
+                        value_loss += (
+                            math.soft_ce(qs[q][t], td_targets[t], self.cfg).mean()
+                            * self.cfg.rho**t
+                        )
+                    else:
+                        breakpoint()
 
         if self.cfg.update_q_separate:
             # Update Q

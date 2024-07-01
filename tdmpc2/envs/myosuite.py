@@ -1,6 +1,6 @@
 import numpy as np
 import gym
-from envs.wrappers.time_limit import TimeLimit
+from gymnasium.wrappers import TimeLimit
 
 
 MYOSUITE_TASKS = {

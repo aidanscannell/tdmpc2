@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -31,15 +31,17 @@ class TensorWrapper(gym.Wrapper):
         return obs
 
     def reset(self, task_idx=None):
-        return self._obs_to_tensor(self.env.reset())
+        obs, info = self.env.reset()
+        return self._obs_to_tensor(obs), info
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(action.numpy())
+        obs, reward, terminated, truncated, info = self.env.step(action.numpy())
         info = defaultdict(float, info)
         info["success"] = float(info["success"])
         return (
             self._obs_to_tensor(obs),
             torch.tensor(reward, dtype=torch.float32),
-            done,
+            terminated,
+            truncated,
             info,
         )

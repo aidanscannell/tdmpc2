@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from envs.wrappers.time_limit import TimeLimit
+from gymnasium.wrappers import TimeLimit
 
 import mani_skill2.envs
 

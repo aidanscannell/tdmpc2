@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -59,10 +59,11 @@ class MultitaskWrapper(gym.Wrapper):
         self._task_idx = task_idx
         self._task = self.cfg.tasks[task_idx]
         self.env = self._env
-        return self._pad_obs(self.env.reset())
+        obs, info = self.env.reset()
+        return self._pad_obs(obs), info
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(
+        obs, reward, terminated, truncated, info = self.env.step(
             action[: self.env.action_space.shape[0]]
         )
-        return self._pad_obs(obs), reward, done, info
+        return self._pad_obs(obs), reward, terminated, truncated, info

@@ -1,6 +1,6 @@
-import numpy as np
 import gymnasium as gym
-from envs.wrappers.time_limit import TimeLimit
+import numpy as np
+from gymnasium.wrappers import TimeLimit
 
 from metaworld.envs import ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE
 

@@ -22,11 +22,20 @@ class WorldModel(nn.Module):
             for i in range(len(cfg.tasks)):
                 self._action_masks[i, : cfg.action_dims[i]] = 1.0
         self._encoder = layers.enc(cfg)
+
+        if cfg.use_simnorm and cfg.use_fsq:
+            raise NotImplementedError("Can't use SimNorm and FSQ together")
+        if cfg.use_simnorm:
+            act = layers.SimNorm(cfg)
+        elif cfg.use_fsq:
+            act = layers.FSQ(cfg)
+        else:
+            act = None
         self._dynamics = layers.mlp(
             cfg.latent_dim + cfg.action_dim + cfg.task_dim,
             2 * [cfg.mlp_dim],
             cfg.latent_dim,
-            act=layers.SimNorm(cfg),
+            act=act,
         )
         self._reward = layers.mlp(
             cfg.latent_dim + cfg.action_dim + cfg.task_dim,

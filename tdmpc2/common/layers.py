@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from functorch import combine_state_for_ensemble
+from vector_quantize_pytorch import FSQ as _FSQ
 
 
 class Ensemble(nn.Module):
@@ -101,7 +102,7 @@ class FSQ(nn.Module):
         self.idx = cfg.fsq_idx
         self.num_channels = len(cfg.fsq_levels)
 
-        self._fsq = FSQ(cfg._levels).to(cfg.device)
+        self._fsq = _FSQ(cfg._levels).to(cfg.device)
 
     def forward(self, x):
         shp = x.shape

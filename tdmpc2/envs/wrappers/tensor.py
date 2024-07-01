@@ -22,6 +22,10 @@ class TensorWrapper(gym.Wrapper):
             x = x.float()
         return x
 
+    @property
+    def unwrapped(self):
+        return self.env.unwrapped
+
     def _obs_to_tensor(self, obs):
         if isinstance(obs, dict):
             for k in obs.keys():

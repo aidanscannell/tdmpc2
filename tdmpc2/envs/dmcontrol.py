@@ -124,7 +124,7 @@ class ExtendedTimeStepWrapper(dm_env.Environment):
         return getattr(self._env, name)
 
 
-class TimeStepToGymnasiumWrapper:
+class TimeStepToGymnasiumWrapper(gym.Env):
     def __init__(self, env, domain, task):
         obs_shp = []
         for v in env.observation_spec().values():
@@ -168,7 +168,7 @@ class TimeStepToGymnasiumWrapper:
 
     def reset(self):
         self.t = 0
-        return self._obs_to_array(self.env.reset().observation)
+        return self._obs_to_array(self.env.reset().observation), {}
 
     def step(self, action):
         self.t += 1

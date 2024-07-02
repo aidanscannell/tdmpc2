@@ -11,7 +11,7 @@ tasks_per_node: 1
 mem_gb: 32
 # mem_gb: 50
 nodes: 1
-name: ${hydra.job.name}
+name: ${task}
 qos: null
 comment: null
 exclude: null

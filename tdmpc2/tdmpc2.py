@@ -1,6 +1,3 @@
-from copy import deepcopy
-
-import layers
 import numpy as np
 import torch
 import torch.nn.functional as F

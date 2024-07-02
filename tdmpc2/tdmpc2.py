@@ -469,7 +469,6 @@ class TDMPC2:
 
         # Return training statistics
         self.model.eval()
-        breakpoint()
         return {
             "contrastive_loss": float(contrastive_loss.mean().item()),
             "consistency_loss": float(consistency_loss.mean().item()),

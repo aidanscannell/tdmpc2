@@ -1,3 +1,6 @@
+from copy import deepcopy
+
+import layers
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -309,7 +312,7 @@ class TDMPC2:
 
         # Compute targets
         with torch.no_grad():
-            next_z = self.model.encode(obs[1:], task)
+            next_z = self.model.encode(obs[1:], task, target=self.cfg.use_tar_enc)
             td_targets = self._td_target(next_z, reward, task)
 
         # Prepare for update
@@ -377,6 +380,12 @@ class TDMPC2:
         )
         self.optim.step()
 
+        # Update target encoder
+        if self.cfg.use_tar_enc:
+            soft_update_params(
+                self.model._encoder, self.model._encoder_tar, tau=self.cfg.tau
+            )
+
         if self.cfg.use_new_enc_for_pi:
             # Use new encoder for pi/Q updates
             zs = torch.empty(
@@ -434,3 +443,8 @@ class TDMPC2:
             "grad_norm": float(grad_norm),
             "pi_scale": float(self.scale.value),
         }
+
+def soft_update_params(model, target, tau: float):
+    with torch.no_grad():
+        for p, p_target in zip(model.parameters(), target.parameters()):
+            p_target.data.lerp_(p.data, tau)

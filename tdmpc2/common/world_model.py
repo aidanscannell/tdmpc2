@@ -22,6 +22,9 @@ class WorldModel(nn.Module):
             for i in range(len(cfg.tasks)):
                 self._action_masks[i, : cfg.action_dims[i]] = 1.0
         self._encoder = layers.enc(cfg)
+        if cfg.use_tar_enc:
+            self._encoder_tar = deepcopy(self._encoder)
+            self._encoder_tar.load_state_dict(self._encoder.state_dict())
 
         if cfg.use_simnorm and cfg.use_fsq:
             raise NotImplementedError("Can't use SimNorm and FSQ together")
@@ -133,16 +136,20 @@ class WorldModel(nn.Module):
             emb = emb.repeat(x.shape[0], 1)
         return torch.cat([x, emb], dim=-1)
 
-    def encode(self, obs, task):
+    def encode(self, obs, task, target: bool = False):
         """
         Encodes an observation into its latent representation.
         This implementation assumes a single state-based observation.
         """
         if self.cfg.multitask:
             obs = self.task_emb(obs, task)
+        if target:
+            enc_fn = self._encoder_tar
+        else:
+            enc_fn = self._encoder
         if self.cfg.obs == "rgb" and obs.ndim == 5:
-            return torch.stack([self._encoder[self.cfg.obs](o) for o in obs])
-        return self._encoder[self.cfg.obs](obs)
+            return torch.stack([enc_fn[self.cfg.obs](o) for o in obs])
+        return enc_fn[self.cfg.obs](obs)
 
     def next(self, z, a, task):
         """

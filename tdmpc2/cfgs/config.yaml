@@ -12,6 +12,7 @@ use_new_enc_for_pi: false
 use_value_loss_for_repr: true
 use_class_loss_for_Q: true
 use_simnorm: true
+use_tar_enc: false
 
 # fsq
 use_fsq: false

@@ -21,47 +21,34 @@ class TDMPC2:
         self.cfg = cfg
         self.device = torch.device("cuda")
         self.model = WorldModel(cfg).to(self.device)
-        if cfg.update_q_separate:
-            self.optim = torch.optim.Adam(
-                [
-                    {
-                        "params": self.model._encoder.parameters(),
-                        "lr": self.cfg.lr * self.cfg.enc_lr_scale,
-                    },
-                    {"params": self.model._dynamics.parameters()},
-                    {"params": self.model._reward.parameters()},
-                    {
-                        "params": self.model._task_emb.parameters()
-                        if self.cfg.multitask
-                        else []
-                    },
-                ],
-                lr=self.cfg.lr,
-            )
-            self.q_optim = torch.optim.Adam(
-                [{"params": self.model._Qs.parameters()}], lr=self.cfg.lr
-            )
-        else:
-            self.optim = torch.optim.Adam(
-                [
-                    {
-                        "params": self.model._encoder.parameters(),
-                        "lr": self.cfg.lr * self.cfg.enc_lr_scale,
-                    },
-                    {"params": self.model._dynamics.parameters()},
-                    {"params": self.model._reward.parameters()},
-                    {"params": self.model._Qs.parameters()},
-                    {
-                        "params": self.model._task_emb.parameters()
-                        if self.cfg.multitask
-                        else []
-                    },
-                ],
-                lr=self.cfg.lr,
-            )
+        if self.cfg.fsq_return_type == "index":
+            raise NotImplementedError
+        if not self.cfg.fsq_return_type == "code":
+            raise NotImplementedError
+
+        enc_params = [
+            {
+                "params": self.model._encoder.parameters(),
+                "lr": self.cfg.lr * self.cfg.enc_lr_scale,
+            },
+            {"params": self.model._dynamics.parameters()},
+            {"params": self.model._reward.parameters()},
+            {"params": self.model._task_emb.parameters() if self.cfg.multitask else []},
+        ]
+        if not cfg.update_q_separate:
+            enc_params += list(self.model._Qs.parameters())
+
+        if cfg.use_latent_projection:
+            enc_params += list(self.model._projection.parameters())
+        self.optim = torch.optim.Adam(enc_params, lr=self.cfg.lr)
         self.pi_optim = torch.optim.Adam(
             self.model._pi.parameters(), lr=self.cfg.lr, eps=1e-5
         )
+        if cfg.update_q_separate:
+            self.q_optim = torch.optim.Adam(
+                [{"params": self.model._Qs.parameters()}], lr=self.cfg.lr
+            )
+
         self.model.eval()
         self.scale = RunningScale(cfg)
         self.cfg.iterations += 2 * int(
@@ -314,6 +301,11 @@ class TDMPC2:
         with torch.no_grad():
             next_z = self.model.encode(obs[1:], task, target=self.cfg.use_tar_enc)
             td_targets = self._td_target(next_z, reward, task)
+            if self.cfg.use_latent_projection:
+                if self.cfg.use_tar_enc:
+                    next_z = self.model._projection_tar(next_z)
+                else:
+                    next_z = self.model._projection(next_z)
 
         # Prepare for update
         self.optim.zero_grad(set_to_none=True)
@@ -329,13 +321,39 @@ class TDMPC2:
         z = self.model.encode(obs[0], task)
         zs[0] = z
         consistency_loss = 0
+        contrastive_loss = 0
         for t in range(self.cfg.horizon):
             z = self.model.next(z, action[t], task)
-            if self.cfg.use_cosine_consistency_loss:
-                _cos_loss = torch.nn.CosineSimilarity(dim=-1, eps=1e-6)(z, next_z[t])
-                consistency_loss += torch.mean(_cos_loss) * self.cfg.rho**t
+
+            if self.cfg.use_latent_projection:
+                z_before_project = z
+                z = self.model._projection(z)
+
+            # Contrastive loss (infoNCE)
+            if self.cfg.use_nce_loss:
+                # TODO only use when not terminated or truncated
+                logits = self.compute_logits(z, next_z[t])
+                labels = torch.arange(logits.shape[0]).long().to(self.device)
+                _nce_loss_1 = torch.nn.CrossEntropyLoss(reduction="none")(
+                    logits, labels
+                )
+                _nce_loss_2 = torch.nn.CrossEntropyLoss(reduction="none")(
+                    logits.T, labels
+                )
+                _nce_loss = (_nce_loss_1 + _nce_loss_2) / 2
+                contrastive_loss += torch.mean(_nce_loss) * self.cfg.rho**t
+                consistency_loss = torch.zeros(1).to(self.device)
             else:
-                consistency_loss += F.mse_loss(z, next_z[t]) * self.cfg.rho**t
+                if self.cfg.use_cosine_consistency_loss:
+                    _cos_loss = torch.nn.CosineSimilarity(dim=-1, eps=1e-6)(
+                        z, next_z[t]
+                    )
+                    consistency_loss += torch.mean(_cos_loss) * self.cfg.rho**t
+                else:
+                    consistency_loss += F.mse_loss(z, next_z[t]) * self.cfg.rho**t
+
+            if self.cfg.use_latent_projection:
+                z = z_before_project  # pyright: ignore
             zs[t + 1] = z
 
         # Predictions
@@ -384,6 +402,12 @@ class TDMPC2:
         if self.cfg.use_tar_enc:
             soft_update_params(
                 self.model._encoder, self.model._encoder_tar, tau=self.cfg.tau
+            )
+
+        # Update target projection
+        if self.cfg.use_latent_projection:
+            soft_update_params(
+                self.model._projection, self.model._projection_tar, tau=self.cfg.tau
             )
 
         if self.cfg.use_new_enc_for_pi:

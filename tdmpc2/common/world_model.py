@@ -25,6 +25,7 @@ class WorldModel(nn.Module):
         if cfg.use_tar_enc:
             self._encoder_tar = deepcopy(self._encoder)
             self._encoder_tar.load_state_dict(self._encoder.state_dict())
+            self._encoder_tar.requires_grad_(False)
 
         if cfg.use_simnorm and cfg.use_fsq:
             raise NotImplementedError("Can't use SimNorm and FSQ together")
@@ -72,6 +73,19 @@ class WorldModel(nn.Module):
                     for _ in range(cfg.num_q)
                 ]
             )
+
+        ##### (Optionally) Initialise projection #####
+        if cfg.use_latent_projection:
+            if cfg.projection_dim is None:
+                cfg.projection_dim = int(cfg.latent_dim / 16)
+
+            self._projection = layers.mlp(
+                cfg.latent_dim, [cfg.mlp_dim], cfg.projection_dim
+            )
+            self._projection_tar = deepcopy(self._projection)
+            self._projection_tar.load_state_dict(self._projection.state_dict())
+            self._projection_tar.requires_grad_(False)
+
         self.apply(init.weight_init)
         init.zero_([self._reward[-1].weight, self._Qs.params[-2]])
         self._target_Qs = deepcopy(self._Qs).requires_grad_(False)

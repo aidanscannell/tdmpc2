@@ -14,6 +14,10 @@ use_class_loss_for_Q: true
 use_simnorm: true
 use_tar_enc: false
 
+# project latent
+project_latent: false
+projection_dim: null # if None uses latent_dim/16
+
 # fsq
 use_fsq: false
 fsq_levels: [8, 8]

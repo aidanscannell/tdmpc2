@@ -37,6 +37,18 @@ class TDMPC2:
 
         if cfg.use_latent_projection:
             enc_params += [{"params": self.model._projection.parameters()}]
+
+        if self.cfg.use_nce_loss:
+            if self.cfg.use_latent_projection:
+                self.W = torch.nn.Parameter(
+                    torch.rand(cfg.projection_dim, cfg.projection_dim).to(self.device)
+                )
+            else:
+                self.W = torch.nn.Parameter(
+                    torch.rand(cfg.latent_dim, cfg.latent_dim).to(self.device)
+                )
+            enc_params += [{"params": self.W}]
+
         self.optim = torch.optim.Adam(enc_params, lr=self.cfg.lr)
         self.pi_optim = torch.optim.Adam(
             self.model._pi.parameters(), lr=self.cfg.lr, eps=1e-5
@@ -317,8 +329,8 @@ class TDMPC2:
         )
         z = self.model.encode(obs[0], task)
         zs[0] = z
-        consistency_loss = 0
-        contrastive_loss = 0
+        consistency_loss = torch.zeros(1).to(self.device)
+        contrastive_loss = torch.zeros(1).to(self.device)
         for t in range(self.cfg.horizon):
             z = self.model.next(z, action[t], task)
 
@@ -326,8 +338,8 @@ class TDMPC2:
                 z_before_project = z
                 z = self.model._projection(z)
 
-            # Contrastive loss (infoNCE)
             if self.cfg.use_nce_loss:
+                # Contrastive loss (infoNCE)
                 # TODO only use when not terminated or truncated
                 logits = self.compute_logits(z, next_z[t])
                 labels = torch.arange(logits.shape[0]).long().to(self.device)
@@ -339,7 +351,6 @@ class TDMPC2:
                 )
                 _nce_loss = (_nce_loss_1 + _nce_loss_2) / 2
                 contrastive_loss += torch.mean(_nce_loss) * self.cfg.rho**t
-                consistency_loss = torch.zeros(1).to(self.device)
             else:
                 if self.cfg.use_cosine_consistency_loss:
                     _cos_loss = torch.nn.CosineSimilarity(dim=-1, eps=1e-6)(
@@ -379,6 +390,7 @@ class TDMPC2:
                             F.mse_loss(qs[q][t], td_targets[t]) * self.cfg.rho**t
                         )
         consistency_loss *= 1 / self.cfg.horizon
+        contrastive_loss *= 1 / self.cfg.horizon
         reward_loss *= 1 / self.cfg.horizon
         value_loss *= 1 / (self.cfg.horizon * self.cfg.num_q)
         total_loss = (
@@ -387,6 +399,8 @@ class TDMPC2:
         )
         if self.cfg.use_value_loss_for_repr:
             total_loss += self.cfg.value_coef * value_loss
+        if self.cfg.use_nce_loss:
+            total_loss += self.cfg.contrastive_coef * contrastive_loss
 
         # Update model
         total_loss.backward()
@@ -455,7 +469,9 @@ class TDMPC2:
 
         # Return training statistics
         self.model.eval()
+        breakpoint()
         return {
+            "contrastive_loss": float(contrastive_loss.mean().item()),
             "consistency_loss": float(consistency_loss.mean().item()),
             "reward_loss": float(reward_loss.mean().item()),
             "value_loss": float(value_loss.mean().item()),
@@ -464,6 +480,30 @@ class TDMPC2:
             "grad_norm": float(grad_norm),
             "pi_scale": float(self.scale.value),
         }
+
+    def compute_logits(self, z, z_next):
+        """
+        - compute (B,B) matrix z_next (W z_next.T)
+        - positives are all diagonal elements
+        - negatives are all other elements
+        - to compute loss use multiclass cross entropy with identity matrix for labels
+        """
+        if self.cfg.use_cosine_similarity_nce:
+            z_e = torch.matmul(z, self.W)  # [B, z_dim]
+            z_next_e = torch.matmul(z_next, self.Wnext)  # [B, z_dim]
+
+            # normalize
+            z_e = nn.functional.normalize(z_e, p=2.0, dim=1)  # [B, z_dim]
+            z_next_e = nn.functional.normalize(z_next_e, p=2.0, dim=1)  # [B, z_dim]
+
+            # scaled pairwise cosine similarities [n, n]
+            logits = torch.matmul(z_e, z_next_e.T) * torch.exp(self.t)  # [B, B]
+        else:
+            Wz = torch.matmul(self.W, z_next.T)  # (z_dim,B)
+            logits = torch.matmul(z, Wz)  # (B,B)
+        logits = logits - torch.max(logits, 1)[0][:, None]
+        return logits
+
 
 def soft_update_params(model, target, tau: float):
     with torch.no_grad():

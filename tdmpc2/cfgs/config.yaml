@@ -14,7 +14,7 @@ use_class_loss_for_Q: true
 use_simnorm: true
 use_tar_enc: false
 
-# use_nce_loss: false
+use_nce_loss: false
 
 # project latent
 use_latent_projection: false

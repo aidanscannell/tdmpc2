@@ -15,7 +15,7 @@ use_simnorm: true
 use_tar_enc: false
 
 # project latent
-project_latent: false
+use_latent_projection: false
 projection_dim: null # if None uses latent_dim/16
 
 # fsq

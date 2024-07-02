@@ -107,7 +107,10 @@ class FSQ(nn.Module):
     def forward(self, x):
         shp = x.shape
         x = x.view(*shp[:-1], -1, self.num_channels)
-        z, indices = self._fsq(x)
+        if x.ndim > 3:  # TODO this might not work for CNN
+            z, indices = torch.func.vmap(self._fsq)(x)
+        else:
+            z, indices = self._fsq(x)
         if self.return_type == "code":
             return z.view(*shp)
         elif self.return_type == "index":

@@ -33,11 +33,10 @@ class TDMPC2:
             {"params": self.model._task_emb.parameters() if self.cfg.multitask else []},
         ]
         if not cfg.update_q_separate:
-            enc_params += {"params": list(self.model._Qs.parameters())}
+            enc_params += [{"params": self.model._Qs.parameters()}]
 
         if cfg.use_latent_projection:
-            enc_params += {"params": list(self.model._projection.parameters())}
-        breakpoint()
+            enc_params += [{"params": self.model._projection.parameters()}]
         self.optim = torch.optim.Adam(enc_params, lr=self.cfg.lr)
         self.pi_optim = torch.optim.Adam(
             self.model._pi.parameters(), lr=self.cfg.lr, eps=1e-5

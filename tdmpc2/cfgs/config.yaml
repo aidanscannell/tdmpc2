@@ -16,6 +16,7 @@ use_tar_enc: false
 
 use_nce_loss: false
 contrastive_coef: 20
+use_cosine_similarity_nce: false
 
 # project latent
 use_latent_projection: false

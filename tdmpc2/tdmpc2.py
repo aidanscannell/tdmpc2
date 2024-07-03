@@ -371,7 +371,8 @@ class TDMPC2:
             qs = self.model.Q(_zs, action, task, return_type="all")
 
         # Compute losses
-        reward_loss, value_loss = 0, 0
+        value_loss = torch.zeros(1).to(self.device)
+        reward_loss = torch.zeros(1).to(self.device)
         for t in range(self.cfg.horizon):
             reward_loss += (
                 math.soft_ce(reward_preds[t], reward[t], self.cfg).mean()
@@ -437,7 +438,7 @@ class TDMPC2:
 
         if self.cfg.update_q_separate:
             # if self.cfg.use_new_enc_for_pi or not self.cfg.use_value_loss_for_repr:
-            value_loss = 0
+            value_loss = torch.zeros(1).to(self.device)
             _zs = zs[:-1]
             qs = self.model.Q(_zs.detach(), action, task, return_type="all")
 

@@ -25,14 +25,18 @@ class OfflineTrainer(Trainer):
         for task_idx in tqdm(range(len(self.cfg.tasks)), desc="Evaluating"):
             ep_rewards, ep_successes = [], []
             for _ in range(self.cfg.eval_episodes):
-                obs, done, ep_reward, t = self.env.reset(task_idx), False, 0, 0
+                obs, info = self.env.reset(task_idx)
+                ep_reward, t = 0, 0
+                done = False
+                # obs, done, ep_reward, t = self.env.reset(task_idx), False, 0, 0
                 while not done:
                     action = self.agent.act(
                         obs, t0=t == 0, eval_mode=True, task=task_idx
                     )
-                    obs, reward, done, info = self.env.step(action)
+                    obs, reward, terminated, truncated, info = self.env.step(action)
                     ep_reward += reward
                     t += 1
+                    done = terminated or truncated
                 ep_rewards.append(ep_reward)
                 ep_successes.append(info["success"])
             results.update(

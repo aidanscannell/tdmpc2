@@ -23,7 +23,6 @@ class MultitaskWrapper(gym.Wrapper):
             except AttributeError:
                 max_episode_steps = env.env.max_episode_steps
             self._episode_lengths.append(max_episode_steps)
-        breakpoint()
         self._obs_shape = (max(self._obs_dims),)
         self._action_dim = max(self._action_dims)
         self.observation_space = gym.spaces.Box(

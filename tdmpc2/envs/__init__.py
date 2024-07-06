@@ -88,9 +88,15 @@ def make_env(cfg):
     except:  # Box
         cfg.obs_shape = {cfg.get("obs", "state"): env.observation_space.shape}
     cfg.action_dim = env.action_space.shape[0]
-    try:
-        cfg.episode_length = env.max_episode_steps
-    except AttributeError:
-        cfg.episode_length = env.env.max_episode_steps
+
+    def get_max_episode_steps(env):
+        try:
+            episode_length = env.max_episode_steps
+        except AttributeError:
+            episode_length = get_max_episode_steps(env.env)
+        return episode_length
+
+    cfg.episode_length = get_max_episode_steps(env)
+    breakpoint()
     cfg.seed_steps = max(1000, 5 * cfg.episode_length)
     return env

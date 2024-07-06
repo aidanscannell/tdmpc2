@@ -78,8 +78,8 @@ class OfflineTrainer(Trainer):
             )
             for i in range(len(td)):
                 self.buffer.add(td[i])
-        assert (
-            self.buffer.num_eps == self.buffer.capacity
+        assert self.buffer.num_eps == (
+            self.buffer.capacity // _cfg.episode_length
         ), f"Buffer has {self.buffer.num_eps} episodes, expected {self.buffer.capacity} episodes."
 
         print(f"Training agent for {self.cfg.steps} iterations...")

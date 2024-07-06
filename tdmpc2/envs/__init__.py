@@ -97,6 +97,5 @@ def make_env(cfg):
         return episode_length
 
     cfg.episode_length = get_max_episode_steps(env)
-    breakpoint()
     cfg.seed_steps = max(1000, 5 * cfg.episode_length)
     return env

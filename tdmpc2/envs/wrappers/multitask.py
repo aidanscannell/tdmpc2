@@ -16,7 +16,14 @@ class MultitaskWrapper(gym.Wrapper):
         self._task_idx = 0
         self._obs_dims = [env.observation_space.shape[0] for env in self.envs]
         self._action_dims = [env.action_space.shape[0] for env in self.envs]
-        self._episode_lengths = [env.max_episode_steps for env in self.envs]
+        self._episode_lengths = []
+        for env in self.envs:
+            try:
+                max_episode_steps = env.max_episode_steps
+            except AttributeError:
+                max_episode_steps = env.env.max_episode_steps
+            self._episode_lengths.append(max_episode_steps)
+        breakpoint()
         self._obs_shape = (max(self._obs_dims),)
         self._action_dim = max(self._action_dims)
         self.observation_space = gym.spaces.Box(

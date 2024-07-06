@@ -9,5 +9,8 @@ for name in DATASET.keys():
         filename = f"{name}/chunk_{chunk}.pt"
         print(f"Downloading {filename}")
         hf_hub_download(
-            repo_id="nicklashansen/tdmpc2", filename=filename, repo_type="dataset"
+            repo_id="nicklashansen/tdmpc2",
+            filename=filename,
+            repo_type="dataset",
+            local_dir="./data",
         )

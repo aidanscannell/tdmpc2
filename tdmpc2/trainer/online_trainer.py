@@ -113,6 +113,7 @@ class OnlineTrainer(Trainer):
                 if self._step == self.cfg.seed_steps:
                     num_updates = self.cfg.seed_steps
                     print("Pretraining agent on seed data...")
+                    breakpoint()
                 else:
                     num_updates = 1
                 for _ in range(num_updates):

@@ -195,7 +195,7 @@ class WorldModel(nn.Module):
             z = self.task_emb(z, task)
         za = torch.cat([z, a], dim=-1)
 
-        if self.cfg.use_ce_loss_dynamics and self.cfg.use_ce_loss_dynamics_softmax:
+        if self.cfg.use_ce_loss_dynamics:
             # Returns logits for each class
             logits = self._dynamics(za)
             logits = logits.reshape(

@@ -34,7 +34,7 @@ class WorldModel(nn.Module):
         if cfg.use_simnorm:
             act = layers.SimNorm(cfg)
         elif cfg.use_fsq:
-            act = layers.FSQ(cfg)
+            act = layers.FSQ(cfg.levels)
 
             ##### Configure FSQ stuff #####
             if cfg.use_fsq:

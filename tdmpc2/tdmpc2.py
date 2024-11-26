@@ -499,7 +499,6 @@ class TDMPC2:
         # Update target Q-functions
         self.model.soft_update_target_Q()
 
-        breakpoint()
         # Return training statistics
         self.model.eval()
         return {

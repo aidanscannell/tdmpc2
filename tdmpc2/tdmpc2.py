@@ -126,6 +126,7 @@ class TDMPC2:
         if task is not None:
             task = torch.tensor([task], device=self.device)
         z = self.model.encode(obs, task)
+        z = z["state"] if self.cfg.use_fsq else z
         if self.cfg.mpc:
             a = self.plan(z, t0=t0, eval_mode=eval_mode, task=task)
         else:
@@ -138,7 +139,9 @@ class TDMPC2:
         G, discount = 0, 1
         for t in range(self.cfg.horizon):
             reward = math.two_hot_inv(self.model.reward(z, actions[t], task), self.cfg)
-            z = self.model.next(z, actions[t], task)
+            z = self.model.next(
+                z, actions[t], task, unc_prop_mode=self.cfg.plan_unc_prop_mode
+            )["codes"]
             G += discount * reward
             discount *= (
                 self.discount[torch.tensor(task)]
@@ -174,7 +177,9 @@ class TDMPC2:
             _z = z.repeat(self.cfg.num_pi_trajs, 1)
             for t in range(self.cfg.horizon - 1):
                 pi_actions[t] = self.model.pi(_z, task)[1]
-                _z = self.model.next(_z, pi_actions[t], task)
+                _z = self.model.next(
+                    _z, pi_actions[t], task, unc_prop_mode=self.cfg.plan_unc_prop_mode
+                )["codes"]
             pi_actions[-1] = self.model.pi(_z, task)[1]
 
         # Initialize state and parameters

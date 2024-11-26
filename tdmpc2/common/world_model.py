@@ -23,11 +23,6 @@ class WorldModel(nn.Module):
             self._action_masks = torch.zeros(len(cfg.tasks), cfg.action_dim)
             for i in range(len(cfg.tasks)):
                 self._action_masks[i, : cfg.action_dims[i]] = 1.0
-        self._encoder = layers.enc(cfg)
-        if cfg.use_tar_enc:
-            self._encoder_tar = deepcopy(self._encoder)
-            self._encoder_tar.load_state_dict(self._encoder.state_dict())
-            self._encoder_tar.requires_grad_(False)
 
         if cfg.use_simnorm and cfg.use_fsq:
             raise NotImplementedError("Can't use SimNorm and FSQ together")
@@ -47,6 +42,13 @@ class WorldModel(nn.Module):
                 self.cfg.latent_dim *= self.num_channels
         else:
             act = None
+
+        self._encoder = layers.enc(cfg)
+        if cfg.use_tar_enc:
+            self._encoder_tar = deepcopy(self._encoder)
+            self._encoder_tar.load_state_dict(self._encoder.state_dict())
+            self._encoder_tar.requires_grad_(False)
+
         if self.cfg.use_ce_loss_dynamics:
             self._dynamics = layers.mlp(
                 cfg.latent_dim + cfg.action_dim + cfg.task_dim,

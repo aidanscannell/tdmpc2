@@ -309,6 +309,9 @@ class TDMPC2:
         # Compute targets
         with torch.no_grad():
             next_z = self.model.encode(obs[1:], task, target=self.cfg.use_tar_enc)
+            if self.cfg.use_fsq:
+                indices_tar = next_z["indices"]
+                next_z = next_z["state"]
             td_targets = self._td_target(next_z, reward, task)
             if self.cfg.use_latent_projection:
                 if self.cfg.use_tar_enc:
@@ -327,42 +330,66 @@ class TDMPC2:
             self.cfg.latent_dim,
             device=self.device,
         )
+        if self.cfg.use_ce_loss_dynamics:
+            logits = torch.empty(
+                self.cfg.horizon + 1,
+                self.cfg.batch_size,
+                self.cfg.latent_dim,
+                self._fsq._fsq.codebook_size,
+                device=self.device,
+            )
         z = self.model.encode(obs[0], task)
         zs[0] = z
         consistency_loss = torch.zeros(1).to(self.device)
         contrastive_loss = torch.zeros(1).to(self.device)
         for t in range(self.cfg.horizon):
-            z = self.model.next(z, action[t], task)
+            if self.cfg.use_ce_loss_dynamics:
+                z = self.model.next(z, action[t], task)
+                logit = z["logits"]
+                z = z["codes"]
+            else:
+                z = self.model.next(z, action[t], task)
 
             if self.cfg.use_latent_projection:
                 z_before_project = z
                 z = self.model._projection(z)
 
-            if self.cfg.use_nce_loss:
-                # Contrastive loss (infoNCE)
-                # TODO only use when not terminated or truncated
-                logits = self.compute_logits(z, next_z[t])
-                labels = torch.arange(logits.shape[0]).long().to(self.device)
-                _nce_loss_1 = torch.nn.CrossEntropyLoss(reduction="none")(
-                    logits, labels
-                )
-                _nce_loss_2 = torch.nn.CrossEntropyLoss(reduction="none")(
-                    logits.T, labels
-                )
-                _nce_loss = (_nce_loss_1 + _nce_loss_2) / 2
-                contrastive_loss += torch.mean(_nce_loss) * self.cfg.rho**t
-            else:
-                if self.cfg.use_cosine_consistency_loss:
-                    _cos_loss = torch.nn.CosineSimilarity(dim=-1, eps=1e-6)(
-                        z, next_z[t]
+            if not self.cfg.use_ce_loss_dynamics:
+                if self.cfg.use_nce_loss:
+                    # Contrastive loss (infoNCE)
+                    # TODO only use when not terminated or truncated
+                    logits = self.compute_logits(z, next_z[t])
+                    labels = torch.arange(logits.shape[0]).long().to(self.device)
+                    _nce_loss_1 = torch.nn.CrossEntropyLoss(reduction="none")(
+                        logits, labels
                     )
-                    consistency_loss += torch.mean(_cos_loss) * self.cfg.rho**t
+                    _nce_loss_2 = torch.nn.CrossEntropyLoss(reduction="none")(
+                        logits.T, labels
+                    )
+                    _nce_loss = (_nce_loss_1 + _nce_loss_2) / 2
+                    contrastive_loss += torch.mean(_nce_loss) * self.cfg.rho**t
                 else:
-                    consistency_loss += F.mse_loss(z, next_z[t]) * self.cfg.rho**t
+                    if self.cfg.use_cosine_consistency_loss:
+                        _cos_loss = torch.nn.CosineSimilarity(dim=-1, eps=1e-6)(
+                            z, next_z[t]
+                        )
+                        consistency_loss += torch.mean(_cos_loss) * self.cfg.rho**t
+                    else:
+                        consistency_loss += F.mse_loss(z, next_z[t]) * self.cfg.rho**t
 
             if self.cfg.use_latent_projection:
                 z = z_before_project  # pyright: ignore
+
             zs[t + 1] = z
+
+            if self.cfg.use_ce_loss_dynamics:
+                logits[t] = logit
+
+        if self.cfg.use_ce_loss_dynamics:
+            consistency_loss = torch.vmap(torch.vmap(F.cross_entropy))(
+                logits, indices_tar.to(torch.long)
+            )
+        breakpoint()
 
         # Predictions
         _zs = zs[:-1]
@@ -394,10 +421,9 @@ class TDMPC2:
         contrastive_loss *= 1 / self.cfg.horizon
         reward_loss *= 1 / self.cfg.horizon
         value_loss *= 1 / (self.cfg.horizon * self.cfg.num_q)
-        total_loss = (
-            self.cfg.consistency_coef * consistency_loss
-            + self.cfg.reward_coef * reward_loss
-        )
+        total_loss = self.cfg.consistency_coef * consistency_loss
+        if self.cfg.use_rew_loss:
+            total_loss += self.cfg.reward_coef * reward_loss
         if self.cfg.use_value_loss_for_repr:
             total_loss += self.cfg.value_coef * value_loss
         if self.cfg.use_nce_loss:
@@ -468,6 +494,7 @@ class TDMPC2:
         # Update target Q-functions
         self.model.soft_update_target_Q()
 
+        breakpoint()
         # Return training statistics
         self.model.eval()
         return {

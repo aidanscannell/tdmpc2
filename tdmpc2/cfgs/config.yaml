@@ -5,6 +5,10 @@ defaults:
 task: dog-run
 obs: state
 
+# dcwm stuff
+unc_prop_mode: "sample"
+plan_unc_prop_mode: "weighed-avg"
+
 # custom
 use_cosine_consistency_loss: false
 update_q_separate: false
@@ -13,10 +17,13 @@ use_value_loss_for_repr: true
 use_class_loss_for_Q: true
 use_simnorm: true
 use_tar_enc: false
+use_rew_loss: true
 
 use_nce_loss: false
 contrastive_coef: 20
 use_cosine_similarity_nce: false
+
+use_ce_loss_dynamics: false
 
 # project latent
 use_latent_projection: false

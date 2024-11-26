@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -90,34 +92,64 @@ class SimNorm(nn.Module):
         return f"SimNorm(dim={self.dim})"
 
 
+# class FSQ(nn.Module):
+#     """
+#     Finite Scalar Quantization
+#     """
+
+#     def __init__(self, cfg):
+#         super().__init__()
+#         self.levels = cfg.fsq_levels
+#         self.return_type = cfg.fsq_return_type  # "code" or "index"
+#         self.num_channels = len(cfg.fsq_levels)
+
+#         self.device = torch.device("cuda")
+#         self._fsq = _FSQ(self.levels).to(self.device)
+
+#     def forward(self, x):
+#         shp = x.shape
+#         x = x.view(*shp[:-1], -1, self.num_channels)
+#         if x.ndim > 3:  # TODO this might not work for CNN
+#             z, indices = torch.func.vmap(self._fsq)(x)
+#         else:
+#             z, indices = self._fsq(x)
+#         if self.return_type == "code":
+#             return z.view(*shp)
+#         elif self.return_type == "index":
+#             return indices
+
+#     def __repr__(self):
+#         return f"FSQ(levels={self.levels}, return_type={self.return_type})"
+
+
 class FSQ(nn.Module):
     """
     Finite Scalar Quantization
     """
 
-    def __init__(self, cfg):
+    def __init__(self, levels: List[int]):
         super().__init__()
-        self.levels = cfg.fsq_levels
-        self.return_type = cfg.fsq_return_type  # "code" or "index"
-        self.num_channels = len(cfg.fsq_levels)
+        self.levels = levels
+        self.num_channels = len(levels)
+        self._fsq = _FSQ(levels)
 
-        self.device = torch.device("cuda")
-        self._fsq = _FSQ(self.levels).to(self.device)
-
-    def forward(self, x):
-        shp = x.shape
-        x = x.view(*shp[:-1], -1, self.num_channels)
-        if x.ndim > 3:  # TODO this might not work for CNN
-            z, indices = torch.func.vmap(self._fsq)(x)
+    def forward(self, z):
+        shp = z.shape
+        z = z.view(*shp[:-1], -1, self.num_channels)
+        if z.ndim > 3:  # TODO this might not work for CNN
+            codes, indices = torch.func.vmap(self._fsq)(z)
         else:
-            z, indices = self._fsq(x)
-        if self.return_type == "code":
-            return z.view(*shp)
-        elif self.return_type == "index":
-            return indices
+            codes, indices = self._fsq(z)
+        return {
+            "codes": codes,
+            "codes_flat": codes.flatten(-2),
+            "indices": indices,
+            "z": z,
+            "state": codes.flatten(-2),
+        }
 
     def __repr__(self):
-        return f"FSQ(levels={self.levels}, return_type={self.return_type})"
+        return f"FSQ(levels={self.levels})"
 
 
 class NormedLinear(nn.Linear):

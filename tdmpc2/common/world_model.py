@@ -1,10 +1,12 @@
 from copy import deepcopy
+from typing import Optional
 
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-from common import layers, math, init
+from common import init, layers, math
 
 
 class WorldModel(nn.Module):
@@ -33,14 +35,32 @@ class WorldModel(nn.Module):
             act = layers.SimNorm(cfg)
         elif cfg.use_fsq:
             act = layers.FSQ(cfg)
+
+            ##### Configure FSQ stuff #####
+            if cfg.use_fsq:
+                self.num_channels = len(cfg.fsq_levels)
+                if not cfg.latent_dim % self.num_channels == 0:
+                    raise NotImplementedError(
+                        "latent_dim must be divisible by number of FSQ channels"
+                    )
+                # self._fsq = h.FSQ(levels=cfg.fsq_levels)
+                self.cfg.latent_dim *= self.num_channels
         else:
             act = None
-        self._dynamics = layers.mlp(
-            cfg.latent_dim + cfg.action_dim + cfg.task_dim,
-            2 * [cfg.mlp_dim],
-            cfg.latent_dim,
-            act=act,
-        )
+        if self.cfg.use_ce_loss_dynamics:
+            self._dynamics = layers.mlp(
+                cfg.latent_dim + cfg.action_dim + cfg.task_dim,
+                2 * [cfg.mlp_dim],
+                cfg.latent_dim / self.num_channels * self._fsq._fsq.codebook_size,
+                act=act,
+            )
+        else:
+            self._dynamics = layers.mlp(
+                cfg.latent_dim + cfg.action_dim + cfg.task_dim,
+                2 * [cfg.mlp_dim],
+                cfg.latent_dim,
+                act=act,
+            )
         self._reward = layers.mlp(
             cfg.latent_dim + cfg.action_dim + cfg.task_dim,
             2 * [cfg.mlp_dim],
@@ -165,14 +185,55 @@ class WorldModel(nn.Module):
             return torch.stack([enc_fn[self.cfg.obs](o) for o in obs])
         return enc_fn[self.cfg.obs](obs)
 
-    def next(self, z, a, task):
+    def next(self, z, a, task, unc_prop_mode: Optional[str] = None):
         """
         Predicts the next latent state given the current latent state and action.
         """
         if self.cfg.multitask:
             z = self.task_emb(z, task)
-        z = torch.cat([z, a], dim=-1)
-        return self._dynamics(z)
+        za = torch.cat([z, a], dim=-1)
+
+        if self.cfg.use_ce_loss_dynamics and self.cfg.use_ce_loss_dynamics_softmax:
+            # Returns logits for each class
+            logits = self._dynamics(za)
+            logits = logits.reshape(
+                # self.cfg.batch_size,
+                -1,
+                int(self.cfg.latent_dim / self.num_channels),
+                self._fsq._fsq.codebook_size,
+            )
+
+            if unc_prop_mode is None:
+                unc_prop_mode = self.cfg.unc_prop_mode
+            # if "sample" in unc_prop_mode:
+            #     z_one_hot = torch.nn.functional.gumbel_softmax(
+            #         logits, tau=1, hard=True, dim=-1
+            #     )
+            #     codebook = self._fsq._fsq.implicit_codebook[None, None, ...]
+            #     next_z = (z_one_hot[..., None, :] @ codebook)[..., 0, :].flatten(-2)
+            if "sample" in unc_prop_mode:
+                z_one_hot = torch.nn.functional.gumbel_softmax(
+                    logits, tau=1.0, hard=True, dim=-1
+                )
+                codebook = self._fsq._fsq.implicit_codebook
+                next_z = einsum(z_one_hot, codebook, "b d c, c l -> b d l")
+                next_z = rearrange(next_z, "b d l -> b (d l)")
+                next_z = {
+                    "codes": next_z,
+                    "logits": logits,
+                    "one-hot": z_one_hot.flatten(-2),
+                }
+            elif "weighted-avg" in unc_prop_mode:
+                probs = F.softmax(logits, dim=-1)
+                codebook = self._fsq._fsq.implicit_codebook
+                next_z = einsum(probs, codebook, "b d c, c l -> b d l")
+                next_z = rearrange(next_z, "b d l -> b (d l)")
+                next_z = {"codes": next_z, "logits": logits}
+            else:
+                raise NotImplementedError
+        else:
+            next_z = self._dynamics(za)
+        return next_z
 
     def reward(self, z, a, task):
         """

@@ -43,7 +43,7 @@ class WorldModel(nn.Module):
                     raise NotImplementedError(
                         "latent_dim must be divisible by number of FSQ channels"
                     )
-                # self._fsq = h.FSQ(levels=cfg.fsq_levels)
+                self._fsq = layers.FSQ(levels=cfg.fsq_levels)
                 self.cfg.latent_dim *= self.num_channels
         else:
             act = None

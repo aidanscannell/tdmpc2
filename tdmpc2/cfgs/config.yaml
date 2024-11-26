@@ -96,6 +96,7 @@ wandb_entity: ???
 wandb_silent: false
 disable_wandb: true
 save_csv: true
+wandb_name: "tdmpc2"
 
 # misc
 save_video: true

@@ -345,8 +345,8 @@ class TDMPC2:
             )
         z = self.model.encode(obs[0], task)["state"]
         zs[0] = z
-        consistency_loss = torch.zeros(1).to(self.device)
-        contrastive_loss = torch.zeros(1).to(self.device)
+        consistency_loss = torch.zeros([]).to(self.device)
+        contrastive_loss = torch.zeros([]).to(self.device)
         for t in range(self.cfg.horizon):
             if self.cfg.use_ce_loss_dynamics:
                 z = self.model.next(z, action[t], task)
@@ -403,8 +403,8 @@ class TDMPC2:
             qs = self.model.Q(_zs, action, task, return_type="all")
 
         # Compute losses
-        value_loss = torch.zeros(1).to(self.device)
-        reward_loss = torch.zeros(1).to(self.device)
+        value_loss = torch.zeros([]).to(self.device)
+        reward_loss = torch.zeros([]).to(self.device)
         for t in range(self.cfg.horizon):
             reward_loss += (
                 math.soft_ce(reward_preds[t], reward[t], self.cfg).mean()

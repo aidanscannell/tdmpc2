@@ -7,7 +7,7 @@ obs: state
 
 # dcwm stuff
 unc_prop_mode: "sample"
-plan_unc_prop_mode: "weighed-avg"
+plan_unc_prop_mode: "weighted-avg"
 
 # custom
 use_cosine_consistency_loss: false

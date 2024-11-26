@@ -339,7 +339,7 @@ class TDMPC2:
             logits = torch.empty(
                 self.cfg.horizon,
                 self.cfg.batch_size,
-                self.cfg.latent_dim,
+                int(self.cfg.latent_dim / self.model.num_channels),
                 self.model._fsq._fsq.codebook_size,
                 device=self.device,
             )

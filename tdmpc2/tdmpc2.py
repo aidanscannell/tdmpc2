@@ -337,13 +337,13 @@ class TDMPC2:
         )
         if self.cfg.use_ce_loss_dynamics:
             logits = torch.empty(
-                self.cfg.horizon + 1,
+                self.cfg.horizon,
                 self.cfg.batch_size,
                 self.cfg.latent_dim,
                 self.model._fsq._fsq.codebook_size,
                 device=self.device,
             )
-        z = self.model.encode(obs[0], task)
+        z = self.model.encode(obs[0], task)["state"]
         zs[0] = z
         consistency_loss = torch.zeros(1).to(self.device)
         contrastive_loss = torch.zeros(1).to(self.device)
@@ -394,7 +394,7 @@ class TDMPC2:
             consistency_loss = torch.vmap(torch.vmap(F.cross_entropy))(
                 logits, indices_tar.to(torch.long)
             )
-        breakpoint()
+            consistency_loss = torch.mean(consistency_loss)
 
         # Predictions
         _zs = zs[:-1]

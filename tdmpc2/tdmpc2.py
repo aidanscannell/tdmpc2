@@ -340,7 +340,7 @@ class TDMPC2:
                 self.cfg.horizon + 1,
                 self.cfg.batch_size,
                 self.cfg.latent_dim,
-                self._fsq._fsq.codebook_size,
+                self.model._fsq._fsq.codebook_size,
                 device=self.device,
             )
         z = self.model.encode(obs[0], task)

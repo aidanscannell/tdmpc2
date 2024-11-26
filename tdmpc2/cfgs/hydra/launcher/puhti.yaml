@@ -1,0 +1,12 @@
+defaults:
+  - submitit_slurm
+
+_target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
+account: project_2007966
+partition: gpu # Partition (queue) name
+timeout_min: 2880 # 48 hours
+cpus_per_task: 8
+mem_gb: 64
+name: ${env_name}-${task_name}
+gres: "gpu:v100:1"
+stderr_to_stdout: True

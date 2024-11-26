@@ -229,7 +229,7 @@ def enc(cfg, out={}):
     if cfg.use_simnorm:
         act = SimNorm(cfg)
     elif cfg.use_fsq:
-        act = FSQ(cfg)
+        act = FSQ(cfg.fsq_levels)
     else:
         act = None
     for k in cfg.obs_shape.keys():

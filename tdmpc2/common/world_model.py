@@ -34,7 +34,7 @@ class WorldModel(nn.Module):
         if cfg.use_simnorm:
             act = layers.SimNorm(cfg)
         elif cfg.use_fsq:
-            act = layers.FSQ(cfg.levels)
+            act = None
 
             ##### Configure FSQ stuff #####
             if cfg.use_fsq:
@@ -52,7 +52,7 @@ class WorldModel(nn.Module):
                 cfg.latent_dim + cfg.action_dim + cfg.task_dim,
                 2 * [cfg.mlp_dim],
                 cfg.latent_dim / self.num_channels * self._fsq._fsq.codebook_size,
-                act=act,
+                act=None,
             )
         else:
             self._dynamics = layers.mlp(

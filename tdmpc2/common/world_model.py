@@ -218,8 +218,7 @@ class WorldModel(nn.Module):
                     logits, tau=1.0, hard=True, dim=-1
                 )
                 codebook = self._fsq._fsq.implicit_codebook
-                next_z = einsum(z_one_hot, codebook, "b d c, c l -> b d l")
-                next_z = rearrange(next_z, "b d l -> b (d l)")
+                next_z = torch.einsum("bdc,cl->bdl", z_one_hot, codebook).flatten(-2)
                 next_z = {
                     "codes": next_z,
                     "logits": logits,
@@ -228,8 +227,7 @@ class WorldModel(nn.Module):
             elif "weighted-avg" in unc_prop_mode:
                 probs = F.softmax(logits, dim=-1)
                 codebook = self._fsq._fsq.implicit_codebook
-                next_z = einsum(probs, codebook, "b d c, c l -> b d l")
-                next_z = rearrange(next_z, "b d l -> b (d l)")
+                next_z = torch.einsum("bdc,cl->bdl", probs, codebook).flatten(-2)
                 next_z = {"codes": next_z, "logits": logits}
             else:
                 raise NotImplementedError

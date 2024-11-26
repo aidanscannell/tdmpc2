@@ -51,7 +51,7 @@ class WorldModel(nn.Module):
             self._dynamics = layers.mlp(
                 cfg.latent_dim + cfg.action_dim + cfg.task_dim,
                 2 * [cfg.mlp_dim],
-                cfg.latent_dim / self.num_channels * self._fsq._fsq.codebook_size,
+                int(cfg.latent_dim / self.num_channels) * self._fsq._fsq.codebook_size,
                 act=None,
             )
         else:

@@ -31,7 +31,7 @@ projection_dim: null # if None uses latent_dim/16
 
 # fsq
 use_fsq: false
-fsq_levels: [8, 8]
+fsq_levels: [5, 3]
 fsq_return_type: "code" # "code" or "index"
 
 # evaluation
